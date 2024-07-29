@@ -72,6 +72,7 @@ func (c *SalesforceClient) fetch(props FetchProps) ([]byte, *int) {
 
 	if err != nil {
 		log.Printf("error getting token %v", err)
+		return nil, nil
 	}
 
 	req.Header.Add("Content-Type", "application/json")
@@ -94,7 +95,6 @@ func (c *SalesforceClient) fetch(props FetchProps) ([]byte, *int) {
 	}
 
 	return respBody, &resp.StatusCode
-
 }
 
 func (c *SalesforceClient) getToken() (string, error) {

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 )
 
@@ -19,11 +20,11 @@ type ErrorResponse struct {
 	Fields    string `json:"fields"`
 }
 
-func Create(c *SalesforceClient, objectType string, body map[string]interface{}) (string, error) {
-	result, statusCode := c.fetch(FetchProps{
+func Create(client *SalesforceClient, objectType string, body map[string]interface{}) (string, error) {
+	result, statusCode := client.fetch(FetchProps{
 		body:   body,
 		method: "POST",
-		url:    fmt.Sprintf("%v/services/data/%v/sobjects/%v", c.orgUrl, c.apiVersion, objectType),
+		url:    fmt.Sprintf("%v/services/data/v%v/sobjects/%v", c.orgUrl, c.apiVersion, objectType),
 	})
 
 	fmt.Printf("status code: %v", statusCode)
@@ -41,11 +42,11 @@ func Create(c *SalesforceClient, objectType string, body map[string]interface{})
 
 }
 
-func Update(c *SalesforceClient, objectType string, recordId string, body map[string]interface{}) error {
-	result, statusCode := c.fetch(FetchProps{
+func Update(client *SalesforceClient, objectType string, recordId string, body map[string]interface{}) error {
+	result, statusCode := client.fetch(FetchProps{
 		body:   body,
 		method: "PATch",
-		url:    fmt.Sprintf("%v/services/data/%v/sobjects/%v/%v", c.orgUrl, c.apiVersion, objectType, recordId),
+		url:    fmt.Sprintf("%v/services/data/v%v/sobjects/%v/%v", c.orgUrl, c.apiVersion, objectType, recordId),
 	})
 
 	fmt.Printf("status code: %v", statusCode)
@@ -63,16 +64,22 @@ func Update(c *SalesforceClient, objectType string, recordId string, body map[st
 	return nil
 }
 
-func Delete(c *SalesforceClient, objectType string, recordId string) error {
-	result, statusCode := c.fetch(FetchProps{
+func Delete(client *SalesforceClient, objectType string, recordId string) error {
+	result, statusCode := client.fetch(FetchProps{
 		method: "DELETE",
-		url:    fmt.Sprintf("%v/services/data/%v/sobjects/%v/%v", c.orgUrl, c.apiVersion, objectType, recordId),
+		url:    fmt.Sprintf("%v/services/data/v%v/sobjects/%v/%v", c.orgUrl, c.apiVersion, objectType, recordId),
 	})
 
 	fmt.Printf("status code: %v", statusCode)
 
 	if *statusCode > 299 {
-		return nil
+		var response ErrorResponse
+
+		if err := json.Unmarshal(result, &response); err != nil {
+			fmt.Println("Can not unmarshal JSON")
+		}
+
+		return errors.New(response.Message)
 	}
 
 	var response ErrorResponse
@@ -82,4 +89,31 @@ func Delete(c *SalesforceClient, objectType string, recordId string) error {
 	}
 
 	return errors.New(response.Message)
+}
+
+func Query(client *SalesforceClient, query string) ([]map[string]interface{}, error) {
+	result, statusCode := client.fetch(FetchProps{
+		method: "GET",
+		url:    fmt.Sprintf("%v/services/data/v%v/q=%v", c.orgUrl, c.apiVersion, url.QueryEscape(query)),
+	})
+
+	fmt.Printf("status code: %v", statusCode)
+
+	if *statusCode > 299 {
+		var response ErrorResponse
+
+		if err := json.Unmarshal(result, &response); err != nil {
+			fmt.Println("Can not unmarshal JSON")
+		}
+
+		return nil, errors.New(response.Message)
+	}
+
+	var response []map[string]interface{}
+
+	if err := json.Unmarshal(result, &response); err != nil {
+		fmt.Println("Can not unmarshal JSON")
+	}
+
+	return response, nil
 }
