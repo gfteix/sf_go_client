@@ -42,6 +42,7 @@ type SalesforceClient struct {
 	password     string
 	username     string
 	orgUrl       string
+	apiUrl       string
 	token        *string
 	tokenExpiry  time.Time
 }
@@ -50,6 +51,21 @@ type FetchProps struct {
 	body   map[string]interface{}
 	method string
 	url    string
+}
+
+func NewSalesforceClient() *SalesforceClient {
+	c := &SalesforceClient{
+		apiVersion:   61,
+		clientId:     getEnv("CLIENT_ID"),
+		clientSecret: getEnv("CLIENT_SECRET"),
+		password:     getEnv("PASSWORD"),
+		username:     getEnv("USERNAME"),
+		orgUrl:       getEnv("ORG_URL"),
+	}
+
+	c.apiUrl = fmt.Sprintf("%v/services/data/v%v", c.orgUrl, c.apiVersion)
+
+	return c
 }
 
 func (c *SalesforceClient) fetch(props FetchProps) ([]byte, *int) {
@@ -161,15 +177,4 @@ func getEnv(key string) string {
 	}
 
 	return ""
-}
-
-func NewSalesforceClient() *SalesforceClient {
-	return &SalesforceClient{
-		apiVersion:   61,
-		clientId:     getEnv("CLIENT_ID"),
-		clientSecret: getEnv("CLIENT_SECRET"),
-		password:     getEnv("PASSWORD"),
-		username:     getEnv("USERNAME"),
-		orgUrl:       getEnv("ORG_URL"),
-	}
 }

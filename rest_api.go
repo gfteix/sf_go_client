@@ -24,7 +24,7 @@ func Create(client *SalesforceClient, objectType string, body map[string]interfa
 	result, statusCode := client.fetch(FetchProps{
 		body:   body,
 		method: "POST",
-		url:    fmt.Sprintf("%v/services/data/v%v/sobjects/%v", c.orgUrl, c.apiVersion, objectType),
+		url:    fmt.Sprintf("%v/sobjects/%v", client.apiUrl, objectType),
 	})
 
 	fmt.Printf("status code: %v", statusCode)
@@ -46,7 +46,7 @@ func Update(client *SalesforceClient, objectType string, recordId string, body m
 	result, statusCode := client.fetch(FetchProps{
 		body:   body,
 		method: "PATch",
-		url:    fmt.Sprintf("%v/services/data/v%v/sobjects/%v/%v", c.orgUrl, c.apiVersion, objectType, recordId),
+		url:    fmt.Sprintf("%v/sobjects/%v/%v", client.apiUrl, objectType, recordId),
 	})
 
 	fmt.Printf("status code: %v", statusCode)
@@ -67,7 +67,7 @@ func Update(client *SalesforceClient, objectType string, recordId string, body m
 func Delete(client *SalesforceClient, objectType string, recordId string) error {
 	result, statusCode := client.fetch(FetchProps{
 		method: "DELETE",
-		url:    fmt.Sprintf("%v/services/data/v%v/sobjects/%v/%v", c.orgUrl, c.apiVersion, objectType, recordId),
+		url:    fmt.Sprintf("%v/sobjects/%v/%v", client.apiUrl, objectType, recordId),
 	})
 
 	fmt.Printf("status code: %v", statusCode)
@@ -94,7 +94,7 @@ func Delete(client *SalesforceClient, objectType string, recordId string) error 
 func Query(client *SalesforceClient, query string) ([]map[string]interface{}, error) {
 	result, statusCode := client.fetch(FetchProps{
 		method: "GET",
-		url:    fmt.Sprintf("%v/services/data/v%v/q=%v", c.orgUrl, c.apiVersion, url.QueryEscape(query)),
+		url:    fmt.Sprintf("%v/q=%v", client.apiUrl, url.QueryEscape(query)),
 	})
 
 	fmt.Printf("status code: %v", statusCode)
