@@ -3,23 +3,37 @@ package main
 import (
 	"fmt"
 	"log"
+
+	"github.com/joho/godotenv"
 )
+
+func init() {
+	err := godotenv.Load(".env")
+
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+}
 
 func main() {
 	client := NewSalesforceClient()
 
-	newAccount := make(map[string]interface{})
-	newAccount["Name"] = "New Account"
+	/*
+		newAccount := make(map[string]interface{})
+		newAccount["Name"] = "New Account"
 
-	id, err := Create(client, "Account", newAccount)
+		id, err := Create(client, "Account", newAccount)
 
-	if err != nil {
-		log.Printf("Error while creating new account %v", err)
-	} else {
-		fmt.Printf("Account created: %v", id)
-	}
+		if err != nil {
+			log.Printf("Error while creating new account %v", err)
+		} else {
+			log.Printf("Account created: %v", id)
+		}
+	*/
 
-	result, err := Query(client, "SELECT Id FROM Account LIMIT 1")
+	query := fmt.Sprintf("SELECT Id, Name FROM Account WHERE Id = '%v'", "001aj00000RjWfKAAV")
+
+	result, err := Query(client, query)
 
 	if err != nil {
 		log.Printf("Failed to query Salesforce")

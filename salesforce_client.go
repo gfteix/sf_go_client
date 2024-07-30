@@ -51,7 +51,7 @@ type SalesforceClient struct {
 type FetchProps struct {
 	body   map[string]interface{}
 	method string
-	url    string
+	path   string
 }
 
 type TokenError struct {
@@ -87,7 +87,9 @@ func (c *SalesforceClient) fetch(props FetchProps) ([]byte, *int) {
 	log.Printf("props %v", props)
 	log.Printf("bufferBody %v", bufferBody)
 
-	req, err := http.NewRequest(props.method, props.url, bufferBody)
+	reqUrl := c.apiUrl + props.path
+
+	req, err := http.NewRequest(props.method, reqUrl, bufferBody)
 
 	log.Printf("req %v", req)
 	if err != nil {
