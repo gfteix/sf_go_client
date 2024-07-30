@@ -3,12 +3,14 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
-	"time"
+	"strings"
 )
 
 type RecordAttributes struct {
@@ -36,7 +38,7 @@ type CompositeResponse struct { // array
 }
 
 type SalesforceClient struct {
-	apiVersion   int
+	apiVersion   string
 	clientId     string
 	clientSecret string
 	password     string
@@ -44,7 +46,6 @@ type SalesforceClient struct {
 	orgUrl       string
 	apiUrl       string
 	token        *string
-	tokenExpiry  time.Time
 }
 
 type FetchProps struct {
@@ -53,9 +54,14 @@ type FetchProps struct {
 	url    string
 }
 
+type TokenError struct {
+	Error            string `json:"error"`
+	ErrorDescription string `json:"error_description"`
+}
+
 func NewSalesforceClient() *SalesforceClient {
 	c := &SalesforceClient{
-		apiVersion:   61,
+		apiVersion:   "v61.0",
 		clientId:     getEnv("CLIENT_ID"),
 		clientSecret: getEnv("CLIENT_SECRET"),
 		password:     getEnv("PASSWORD"),
@@ -63,7 +69,7 @@ func NewSalesforceClient() *SalesforceClient {
 		orgUrl:       getEnv("ORG_URL"),
 	}
 
-	c.apiUrl = fmt.Sprintf("%v/services/data/v%v", c.orgUrl, c.apiVersion)
+	c.apiUrl = fmt.Sprintf("%v/services/data/%v", c.orgUrl, c.apiVersion)
 
 	return c
 }
@@ -77,8 +83,13 @@ func (c *SalesforceClient) fetch(props FetchProps) ([]byte, *int) {
 	}
 
 	client := &http.Client{}
+
+	log.Printf("props %v", props)
+	log.Printf("bufferBody %v", bufferBody)
+
 	req, err := http.NewRequest(props.method, props.url, bufferBody)
 
+	log.Printf("req %v", req)
 	if err != nil {
 		log.Printf("error on http.NewRequest: %v", err)
 		return nil, nil
@@ -110,37 +121,34 @@ func (c *SalesforceClient) fetch(props FetchProps) ([]byte, *int) {
 		return nil, &resp.StatusCode
 	}
 
+	log.Printf("respBody %v", respBody)
+
 	return respBody, &resp.StatusCode
 }
 
 func (c *SalesforceClient) getToken() (string, error) {
-	if c.token != nil && time.Now().Before(c.tokenExpiry) {
+	if c.token != nil {
 		return *c.token, nil
 	}
 
-	url := fmt.Sprintf("%s/services/oauth2/token", c.orgUrl)
-	body := make(map[string]string)
-
-	body["grant_type"] = "password"
-	body["client_id"] = c.clientId
-	body["client_secret"] = c.clientSecret
-	body["username"] = c.username
-	body["password"] = c.password
-
-	postBody, _ := json.Marshal(body)
-	requestBody := bytes.NewBuffer(postBody)
+	requestUrl := fmt.Sprintf("%s/services/oauth2/token", c.orgUrl)
+	data := url.Values{}
+	data.Set("grant_type", "password")
+	data.Set("client_id", c.clientId)
+	data.Set("client_secret", c.clientSecret)
+	data.Set("username", c.username)
+	data.Set("password", c.password)
 
 	client := &http.Client{}
-	req, err := http.NewRequest("POST", url, requestBody)
+	req, err := http.NewRequest("POST", requestUrl, strings.NewReader(data.Encode()))
 
 	if err != nil {
 		log.Printf("error on http.NewRequest: %v", err)
 		return "", err
-
 	}
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("Accept", "application/json; charset=UTF-8")
+	req.Header.Add("Accept", "*/*")
 
 	resp, err := client.Do(req)
 
@@ -151,24 +159,31 @@ func (c *SalesforceClient) getToken() (string, error) {
 
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(resp.Body)
+	if resp.StatusCode > 299 {
+		var result TokenError
 
-	if err != nil {
-		log.Printf("error on io.ReadAll: %v", err)
-		return "", err
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			return "", err
+		}
+		log.Printf("Error getting token: %v", result.ErrorDescription)
+
+		return "", errors.New("Error getting the token: " + result.ErrorDescription)
 	}
 
-	fmt.Println(string(respBody))
-
 	var result map[string]interface{}
+
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		log.Fatalf("Failed to decode response body: %v", err)
 	}
 
-	*c.token = result["access_token"].(string)
-	c.tokenExpiry = result["expiry_time"].(time.Time) // ?
+	token, ok := result["access_token"].(string)
+	if !ok {
+		return "", errors.New("access_token not found in response")
+	}
 
-	return *c.token, nil
+	c.token = &token
+
+	return token, nil
 }
 
 func getEnv(key string) string {
