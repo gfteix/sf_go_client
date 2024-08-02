@@ -18,26 +18,30 @@ func init() {
 func main() {
 	client := NewSalesforceClient()
 
-	/*
-		newAccount := make(map[string]interface{})
-		newAccount["Name"] = "New Account"
+	newAccount := make(map[string]interface{})
+	newAccount["Name"] = "New Account"
 
-		id, err := Create(client, "Account", newAccount)
+	id, err := Create(client, "Account", newAccount)
 
-		if err != nil {
-			log.Printf("Error while creating new account %v", err)
-		} else {
-			log.Printf("Account created: %v", id)
-		}
-	*/
+	if err != nil {
+		log.Panicf("Error while creating new account %v", err)
+	}
 
-	query := fmt.Sprintf("SELECT Id, Name FROM Account WHERE Id = '%v'", "001aj00000RjWfKAAV")
+	log.Printf("Account created: %v", id)
+
+	query := fmt.Sprintf("SELECT Id, Name FROM Account WHERE Id = '%v'", id)
 
 	result, err := Query(client, query)
 
 	if err != nil {
-		log.Printf("Failed to query Salesforce")
-	} else {
-		log.Printf("Query Result: %v", result)
+		log.Panic("Failed to query Salesforce")
+	}
+
+	for _, record := range result {
+		name := record["Name"]
+		log.Printf("%v", name)
+
+		id := record["Id"]
+		log.Printf("%v", id)
 	}
 }
