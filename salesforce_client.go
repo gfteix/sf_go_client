@@ -75,7 +75,7 @@ func NewSalesforceClient() *SalesforceClient {
 }
 
 func (c *SalesforceClient) fetch(props FetchProps) ([]byte, *int) {
-	var bufferBody *bytes.Buffer = nil
+	var bufferBody io.Reader
 
 	if props.body != nil {
 		encodedBody, _ := json.Marshal(props.body)
@@ -84,14 +84,10 @@ func (c *SalesforceClient) fetch(props FetchProps) ([]byte, *int) {
 
 	client := &http.Client{}
 
-	log.Printf("props %v", props)
-	log.Printf("bufferBody %v", bufferBody)
-
 	reqUrl := c.apiUrl + props.path
 
 	req, err := http.NewRequest(props.method, reqUrl, bufferBody)
 
-	log.Printf("req %v", req)
 	if err != nil {
 		log.Printf("error on http.NewRequest: %v", err)
 		return nil, nil
@@ -123,7 +119,7 @@ func (c *SalesforceClient) fetch(props FetchProps) ([]byte, *int) {
 		return nil, &resp.StatusCode
 	}
 
-	log.Printf("respBody %v", respBody)
+	fmt.Printf("status code: %v\n", resp.StatusCode)
 
 	return respBody, &resp.StatusCode
 }

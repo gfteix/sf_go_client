@@ -20,7 +20,7 @@ type ErrorResponse struct {
 }
 
 type QueryResponse struct {
-	Done      string                   `json:"done"`
+	Done      bool                     `json:"done"`
 	TotalSize int                      `json:"totalSize"`
 	Records   []map[string]interface{} `json:"records"`
 }
@@ -32,7 +32,9 @@ func Create(client *SalesforceClient, objectType string, body map[string]interfa
 		path:   fmt.Sprintf("/sobjects/%v/", objectType),
 	})
 
-	fmt.Printf("status code: %v", *statusCode)
+	if statusCode == nil {
+		return "", errors.New("unable to fetch data")
+	}
 
 	if *statusCode > 299 {
 		var response []map[string]interface{}
@@ -63,7 +65,9 @@ func Update(client *SalesforceClient, objectType string, recordId string, body m
 		path:   fmt.Sprintf("/sobjects/%v/%v", objectType, recordId),
 	})
 
-	fmt.Printf("status code: %v", statusCode)
+	if statusCode == nil {
+		return errors.New("unable to fetch data")
+	}
 
 	if *statusCode > 299 {
 		var response ErrorResponse
@@ -84,8 +88,9 @@ func Delete(client *SalesforceClient, objectType string, recordId string) error 
 		path:   fmt.Sprintf("/sobjects/%v/%v", objectType, recordId),
 	})
 
-	fmt.Printf("status code: %v", statusCode)
-
+	if statusCode == nil {
+		return errors.New("unable to fetch data")
+	}
 	if *statusCode > 299 {
 		var response ErrorResponse
 
@@ -111,16 +116,18 @@ func Query(client *SalesforceClient, query string) ([]map[string]interface{}, er
 		path:   "/query/?q=" + url.QueryEscape(query),
 	})
 
-	fmt.Printf("status code: %v", statusCode)
+	if statusCode == nil {
+		return nil, errors.New("unable to fetch data")
+	}
 
 	if *statusCode > 299 {
-		var response ErrorResponse
+		var response []ErrorResponse
 
 		if err := json.Unmarshal(result, &response); err != nil {
 			return nil, err
 		}
 
-		return nil, errors.New(response.Message)
+		return nil, errors.New(response[0].Message)
 	}
 
 	var response QueryResponse
