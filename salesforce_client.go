@@ -13,32 +13,8 @@ import (
 	"strings"
 )
 
-type RecordAttributes struct {
-	Type string `json:"type"`
-}
-
-type Record struct {
-	Attributes RecordAttributes `json:"attributes"`
-	// [key: string]: any -> how to map this to go type?
-}
-
-type CompositeBody struct {
-	AllOrNone bool     `json:"allOrNone"`
-	Records   []Record `json:"records"`
-}
-
-type CompositeError struct {
-	StatusCode string   `json:"statusCode"`
-	Message    string   `json:"message"`
-	Fields     []string `json:"fields"`
-}
-type CompositeResponse struct { // array
-	Success string           `json:"success"`
-	Errors  []CompositeError `json:"CompositeError"`
-}
-
 type SalesforceClient struct {
-	apiVersion   string
+	apiVersion   int
 	clientId     string
 	clientSecret string
 	password     string
@@ -61,7 +37,7 @@ type TokenError struct {
 
 func NewSalesforceClient() *SalesforceClient {
 	c := &SalesforceClient{
-		apiVersion:   "v61.0",
+		apiVersion:   61,
 		clientId:     getEnv("CLIENT_ID"),
 		clientSecret: getEnv("CLIENT_SECRET"),
 		password:     getEnv("PASSWORD"),
@@ -69,7 +45,7 @@ func NewSalesforceClient() *SalesforceClient {
 		orgUrl:       getEnv("ORG_URL"),
 	}
 
-	c.apiUrl = fmt.Sprintf("%v/services/data/%v", c.orgUrl, c.apiVersion)
+	c.apiUrl = fmt.Sprintf("%v/services/data/v%v.0", c.orgUrl, c.apiVersion)
 
 	return c
 }
@@ -78,14 +54,19 @@ func (c *SalesforceClient) fetch(props FetchProps) ([]byte, *int) {
 	var bufferBody io.Reader
 
 	if props.body != nil {
-		encodedBody, _ := json.Marshal(props.body)
+		encodedBody, err := json.Marshal(props.body)
+
+		if err != nil {
+			log.Printf("Error converting body to JSON: %v", err)
+			return nil, nil
+		}
+
 		bufferBody = bytes.NewBuffer(encodedBody)
 	}
 
 	client := &http.Client{}
 
 	reqUrl := c.apiUrl + props.path
-
 	req, err := http.NewRequest(props.method, reqUrl, bufferBody)
 
 	if err != nil {

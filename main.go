@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"reflect"
 
 	"github.com/joho/godotenv"
 )
@@ -17,7 +18,6 @@ func init() {
 
 func main() {
 	client := NewSalesforceClient()
-
 	newAccount := make(map[string]interface{})
 	newAccount["Name"] = "New Account"
 
@@ -29,19 +29,23 @@ func main() {
 
 	log.Printf("Account created: %v", id)
 
-	query := fmt.Sprintf("SELECT Id, Name FROM Account WHERE Id = '%v'", id)
-
+	query := fmt.Sprintf("SELECT Id, Name, Parent.Name, CreatedDate FROM Account WHERE Id = '%v'", id)
 	result, err := Query(client, query)
 
 	if err != nil {
 		log.Panic("Failed to query Salesforce")
 	}
 
-	for _, record := range result {
-		name := record["Name"]
-		log.Printf("%v", name)
+	printResult(result)
+}
 
-		id := record["Id"]
-		log.Printf("%v", id)
+func printResult(result []map[string]interface{}) {
+	for index, record := range result {
+		log.Printf("Index %v", index)
+
+		for key, value := range record {
+			log.Printf("%s: %v", key, value)
+			log.Printf("Type: %v", reflect.TypeOf(value))
+		}
 	}
 }

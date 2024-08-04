@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/url"
 )
 
@@ -13,16 +14,16 @@ type CreateResponse struct {
 	Success bool     `json:"success"`
 }
 
-type ErrorResponse struct {
-	ErrorCode string `json:"errorCode"`
-	Message   string `json:"message"`
-	Fields    string `json:"fields"`
-}
-
 type QueryResponse struct {
 	Done      bool                     `json:"done"`
 	TotalSize int                      `json:"totalSize"`
 	Records   []map[string]interface{} `json:"records"`
+}
+
+type ErrorResponse struct {
+	ErrorCode string `json:"errorCode"`
+	Message   string `json:"message"`
+	Fields    string `json:"fields"`
 }
 
 func Create(client *SalesforceClient, objectType string, body map[string]interface{}) (string, error) {
@@ -37,20 +38,20 @@ func Create(client *SalesforceClient, objectType string, body map[string]interfa
 	}
 
 	if *statusCode > 299 {
-		var response []map[string]interface{}
+		var response []ErrorResponse
 
 		if err := json.Unmarshal(result, &response); err != nil {
+			log.Println("Failed to unmarshal result")
 			return "", err
 		}
 
-		message := response[0]["message"].(string)
-
-		return "", errors.New(message)
+		return "", errors.New(response[0].Message)
 	}
 
 	var response CreateResponse
 
 	if err := json.Unmarshal(result, &response); err != nil {
+		log.Println("Failed to unmarshal result")
 		return "", err
 	}
 
@@ -61,7 +62,7 @@ func Create(client *SalesforceClient, objectType string, body map[string]interfa
 func Update(client *SalesforceClient, objectType string, recordId string, body map[string]interface{}) error {
 	result, statusCode := client.fetch(FetchProps{
 		body:   body,
-		method: "PATch",
+		method: "PATCH",
 		path:   fmt.Sprintf("/sobjects/%v/%v", objectType, recordId),
 	})
 
@@ -70,13 +71,14 @@ func Update(client *SalesforceClient, objectType string, recordId string, body m
 	}
 
 	if *statusCode > 299 {
-		var response ErrorResponse
+		var response []ErrorResponse
 
 		if err := json.Unmarshal(result, &response); err != nil {
+			log.Println("Failed to unmarshal result")
 			return err
 		}
 
-		return errors.New(response.Message)
+		return errors.New(response[0].Message)
 	}
 
 	return nil
@@ -91,23 +93,18 @@ func Delete(client *SalesforceClient, objectType string, recordId string) error 
 	if statusCode == nil {
 		return errors.New("unable to fetch data")
 	}
+
 	if *statusCode > 299 {
-		var response ErrorResponse
+		var response []ErrorResponse
 
 		if err := json.Unmarshal(result, &response); err != nil {
 			return err
 		}
 
-		return errors.New(response.Message)
+		return errors.New(response[0].Message)
 	}
 
-	var response ErrorResponse
-
-	if err := json.Unmarshal(result, &response); err != nil {
-		return err
-	}
-
-	return errors.New(response.Message)
+	return nil
 }
 
 func Query(client *SalesforceClient, query string) ([]map[string]interface{}, error) {
@@ -124,6 +121,7 @@ func Query(client *SalesforceClient, query string) ([]map[string]interface{}, er
 		var response []ErrorResponse
 
 		if err := json.Unmarshal(result, &response); err != nil {
+			log.Println("Failed to unmarshal result")
 			return nil, err
 		}
 
@@ -133,6 +131,7 @@ func Query(client *SalesforceClient, query string) ([]map[string]interface{}, er
 	var response QueryResponse
 
 	if err := json.Unmarshal(result, &response); err != nil {
+		log.Println("Failed to unmarshal result")
 		return nil, err
 	}
 
