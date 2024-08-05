@@ -85,11 +85,11 @@ Call the NewSalesforceClient to retrieve a new client
 		log.Panic("Failed to query Salesforce")
 	}
 
-    // Priting the result
-
-    for index, record := range result {
+	// Priting the result
+	
+	for index, record := range result {
 		log.Printf("Index %v", index)
-
+	
 		for key, value := range record {
 			log.Printf("%s: %v", key, value)
 			log.Printf("Type: %v", reflect.TypeOf(value))
