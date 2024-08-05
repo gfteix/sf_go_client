@@ -21,7 +21,11 @@ func main() {
 	newAccount := make(map[string]interface{})
 	newAccount["Name"] = "New Account"
 
-	id, err := Create(client, "Account", newAccount)
+	id, err := Create(CreateProps{
+		client:     client,
+		objectType: "Account",
+		body:       newAccount,
+	})
 
 	if err != nil {
 		log.Panicf("Error while creating new account %v", err)
@@ -36,10 +40,10 @@ func main() {
 		log.Panic("Failed to query Salesforce")
 	}
 
-	printResult(result)
+	logRecords(result)
 }
 
-func printResult(result []map[string]interface{}) {
+func logRecords(result []Record) {
 	for index, record := range result {
 		log.Printf("Index %v", index)
 

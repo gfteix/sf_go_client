@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -36,8 +37,23 @@ type TokenError struct {
 }
 
 func NewSalesforceClient() *SalesforceClient {
+	versionFromEnv := getEnv("API_VERSION")
+	var version int
+
+	if versionFromEnv != "" {
+		v, err := strconv.ParseInt(versionFromEnv, 10, 0)
+
+		if err != nil {
+			log.Panicf("invalid version %v, %v", v, err)
+		}
+
+		version = int(v)
+	} else {
+		version = 61
+	}
+
 	c := &SalesforceClient{
-		apiVersion:   61,
+		apiVersion:   version,
 		clientId:     getEnv("CLIENT_ID"),
 		clientSecret: getEnv("CLIENT_SECRET"),
 		password:     getEnv("PASSWORD"),

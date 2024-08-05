@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"strings"
 )
+
+type Record map[string]interface{}
 
 type CreateResponse struct {
 	Id      string   `json:"id"`
@@ -15,9 +18,9 @@ type CreateResponse struct {
 }
 
 type QueryResponse struct {
-	Done      bool                     `json:"done"`
-	TotalSize int                      `json:"totalSize"`
-	Records   []map[string]interface{} `json:"records"`
+	Done      bool     `json:"done"`
+	TotalSize int      `json:"totalSize"`
+	Records   []Record `json:"records"`
 }
 
 type ErrorResponse struct {
@@ -26,11 +29,37 @@ type ErrorResponse struct {
 	Fields    string `json:"fields"`
 }
 
-func Create(client *SalesforceClient, objectType string, body map[string]interface{}) (string, error) {
-	result, statusCode := client.fetch(FetchProps{
-		body:   body,
+type CreateProps struct {
+	client     *SalesforceClient
+	objectType string
+	body       map[string]interface{}
+}
+
+type UpdateProps struct {
+	client     *SalesforceClient
+	objectType string
+	recordId   string
+	body       map[string]interface{}
+}
+
+type DeleteProps struct {
+	client     *SalesforceClient
+	objectType string
+	recordId   string
+}
+
+type GetByIdProps struct {
+	client     *SalesforceClient
+	objectType string
+	recordId   string
+	fields     []string // optional
+}
+
+func Create(props CreateProps) (string, error) {
+	result, statusCode := props.client.fetch(FetchProps{
+		body:   props.body,
 		method: "POST",
-		path:   fmt.Sprintf("/sobjects/%v/", objectType),
+		path:   fmt.Sprintf("/sobjects/%v/", props.objectType),
 	})
 
 	if statusCode == nil {
@@ -59,11 +88,11 @@ func Create(client *SalesforceClient, objectType string, body map[string]interfa
 
 }
 
-func Update(client *SalesforceClient, objectType string, recordId string, body map[string]interface{}) error {
-	result, statusCode := client.fetch(FetchProps{
-		body:   body,
+func Update(props UpdateProps) error {
+	result, statusCode := props.client.fetch(FetchProps{
+		body:   props.body,
 		method: "PATCH",
-		path:   fmt.Sprintf("/sobjects/%v/%v", objectType, recordId),
+		path:   fmt.Sprintf("/sobjects/%v/%v", props.objectType, props.recordId),
 	})
 
 	if statusCode == nil {
@@ -84,10 +113,10 @@ func Update(client *SalesforceClient, objectType string, recordId string, body m
 	return nil
 }
 
-func Delete(client *SalesforceClient, objectType string, recordId string) error {
-	result, statusCode := client.fetch(FetchProps{
+func Delete(props DeleteProps) error {
+	result, statusCode := props.client.fetch(FetchProps{
 		method: "DELETE",
-		path:   fmt.Sprintf("/sobjects/%v/%v", objectType, recordId),
+		path:   fmt.Sprintf("/sobjects/%v/%v", props.objectType, props.recordId),
 	})
 
 	if statusCode == nil {
@@ -107,7 +136,50 @@ func Delete(client *SalesforceClient, objectType string, recordId string) error 
 	return nil
 }
 
-func Query(client *SalesforceClient, query string) ([]map[string]interface{}, error) {
+func GetByExternalId() (map[string]interface{}, error) {
+	log.Panic("Not implemented")
+	return nil, nil
+}
+
+func GetById(props GetByIdProps) (map[string]interface{}, error) {
+	path := fmt.Sprintf("/sobjects/%v/%v/", props.objectType, props.recordId)
+
+	if props.fields != nil && len(props.fields) > 0 {
+		fields := strings.Join(props.fields, ",")
+		path = path + "?fields=" + fields
+	}
+
+	result, statusCode := props.client.fetch(FetchProps{
+		method: "GET",
+		path:   path,
+	})
+
+	if statusCode == nil {
+		return nil, errors.New("unable to fetch data")
+	}
+
+	if *statusCode > 299 {
+		var response []ErrorResponse
+
+		if err := json.Unmarshal(result, &response); err != nil {
+			log.Println("Failed to unmarshal result")
+			return nil, err
+		}
+
+		return nil, errors.New(response[0].Message)
+	}
+
+	var response Record
+
+	if err := json.Unmarshal(result, &response); err != nil {
+		log.Println("Failed to unmarshal result")
+		return nil, err
+	}
+
+	return response, nil
+}
+
+func Query(client *SalesforceClient, query string) ([]Record, error) {
 	result, statusCode := client.fetch(FetchProps{
 		method: "GET",
 		path:   "/query/?q=" + url.QueryEscape(query),
