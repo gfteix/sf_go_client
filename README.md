@@ -14,7 +14,7 @@ PASSWORD=
 CLIENT_ID=
 CLIENT_SECRET=
 ORG_URL=
-API_VERSION= 	// optional
+API_VERSION=
 ```
 
 
@@ -22,14 +22,13 @@ Call the NewSalesforceClient to retrieve a new client
 
 ```
     client := NewSalesforceClient()
-
 ```
 
 ## Rest API
 
 ### Creating a record
 
-```	
+```GO
 	newAccount := make(map[string]interface{})
 	newAccount["Name"] = "New Account"
 
@@ -46,7 +45,7 @@ Call the NewSalesforceClient to retrieve a new client
 
 ### Updating a record
 
-```
+```GO
 	account := make(map[string]interface{})
 	account["Name"] = "Updated Value"
 
@@ -64,7 +63,7 @@ Call the NewSalesforceClient to retrieve a new client
 
 ### Deleting a record
 
-```
+```GO
 	err := Delete(DeleteProps{
 		client: client, 
 		objectType: "Account", 
@@ -78,7 +77,7 @@ Call the NewSalesforceClient to retrieve a new client
 
 ### Query
 
-```
+```GO
 	query := fmt.Sprintf("SELECT Id, Name, Parent.Name, CreatedDate FROM Account WHERE Id = '%v'", id)
 	result, err := Query(client, query)
 
