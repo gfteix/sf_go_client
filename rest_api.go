@@ -9,8 +9,6 @@ import (
 	"strings"
 )
 
-type Record map[string]interface{}
-
 type CreateResponse struct {
 	Id      string   `json:"id"`
 	Errors  []string `json:"errors"`
@@ -21,12 +19,6 @@ type QueryResponse struct {
 	Done      bool     `json:"done"`
 	TotalSize int      `json:"totalSize"`
 	Records   []Record `json:"records"`
-}
-
-type ErrorResponse struct {
-	ErrorCode string `json:"errorCode"`
-	Message   string `json:"message"`
-	Fields    string `json:"fields"`
 }
 
 type CreateProps struct {
