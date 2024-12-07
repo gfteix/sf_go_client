@@ -138,7 +138,7 @@ func GetByExternalId() (map[string]interface{}, error) {
 func GetById(props GetByIdProps) (map[string]interface{}, error) {
 	path := fmt.Sprintf("/sobjects/%v/%v/", props.objectType, props.recordId)
 
-	if props.fields != nil && len(props.fields) > 0 {
+	if len(props.fields) > 0 {
 		fields := strings.Join(props.fields, ",")
 		path = path + "?fields=" + fields
 	}
