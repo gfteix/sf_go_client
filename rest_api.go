@@ -48,20 +48,20 @@ type GetByIdProps struct {
 }
 
 func Create(props CreateProps) (string, error) {
-	result, statusCode := props.client.fetch(FetchProps{
+	result, err := props.client.fetch(FetchRequest{
 		body:   props.body,
 		method: "POST",
 		path:   fmt.Sprintf("/sobjects/%v/", props.objectType),
 	})
 
-	if statusCode == nil {
-		return "", errors.New("unable to fetch data")
+	if err != nil {
+		return "", err
 	}
 
-	if *statusCode > 299 {
+	if result.statusCode > 299 {
 		var response []ErrorResponse
 
-		if err := json.Unmarshal(result, &response); err != nil {
+		if err := json.Unmarshal(result.body, &response); err != nil {
 			log.Println("Failed to unmarshal result")
 			return "", err
 		}
@@ -71,7 +71,7 @@ func Create(props CreateProps) (string, error) {
 
 	var response CreateResponse
 
-	if err := json.Unmarshal(result, &response); err != nil {
+	if err := json.Unmarshal(result.body, &response); err != nil {
 		log.Println("Failed to unmarshal result")
 		return "", err
 	}
@@ -81,44 +81,46 @@ func Create(props CreateProps) (string, error) {
 }
 
 func Update(props UpdateProps) error {
-	result, statusCode := props.client.fetch(FetchProps{
+	response := FetchResponse{}
+
+	response, error := props.client.fetch(FetchRequest{
 		body:   props.body,
 		method: "PATCH",
 		path:   fmt.Sprintf("/sobjects/%v/%v", props.objectType, props.recordId),
 	})
 
-	if statusCode == nil {
-		return errors.New("unable to fetch data")
+	if error == nil {
+		return error
 	}
 
-	if *statusCode > 299 {
-		var response []ErrorResponse
+	if response.statusCode > 299 {
+		var errorResponse []ErrorResponse
 
-		if err := json.Unmarshal(result, &response); err != nil {
+		if err := json.Unmarshal(response.body, &errorResponse); err != nil {
 			log.Println("Failed to unmarshal result")
 			return err
 		}
 
-		return errors.New(response[0].Message)
+		return errors.New(errorResponse[0].Message)
 	}
 
 	return nil
 }
 
 func Delete(props DeleteProps) error {
-	result, statusCode := props.client.fetch(FetchProps{
+	result, err := props.client.fetch(FetchRequest{
 		method: "DELETE",
 		path:   fmt.Sprintf("/sobjects/%v/%v", props.objectType, props.recordId),
 	})
 
-	if statusCode == nil {
+	if err != nil {
 		return errors.New("unable to fetch data")
 	}
 
-	if *statusCode > 299 {
+	if result.statusCode > 299 {
 		var response []ErrorResponse
 
-		if err := json.Unmarshal(result, &response); err != nil {
+		if err := json.Unmarshal(result.body, &response); err != nil {
 			return err
 		}
 
@@ -141,19 +143,19 @@ func GetById(props GetByIdProps) (map[string]interface{}, error) {
 		path = path + "?fields=" + fields
 	}
 
-	result, statusCode := props.client.fetch(FetchProps{
+	result, error := props.client.fetch(FetchRequest{
 		method: "GET",
 		path:   path,
 	})
 
-	if statusCode == nil {
-		return nil, errors.New("unable to fetch data")
+	if error != nil {
+		return nil, error
 	}
 
-	if *statusCode > 299 {
+	if result.statusCode > 299 {
 		var response []ErrorResponse
 
-		if err := json.Unmarshal(result, &response); err != nil {
+		if err := json.Unmarshal(result.body, &response); err != nil {
 			log.Println("Failed to unmarshal result")
 			return nil, err
 		}
@@ -163,7 +165,7 @@ func GetById(props GetByIdProps) (map[string]interface{}, error) {
 
 	var response Record
 
-	if err := json.Unmarshal(result, &response); err != nil {
+	if err := json.Unmarshal(result.body, &response); err != nil {
 		log.Println("Failed to unmarshal result")
 		return nil, err
 	}
@@ -172,19 +174,19 @@ func GetById(props GetByIdProps) (map[string]interface{}, error) {
 }
 
 func Query(client *SalesforceClient, query string) ([]Record, error) {
-	result, statusCode := client.fetch(FetchProps{
+	result, error := client.fetch(FetchRequest{
 		method: "GET",
 		path:   "/query/?q=" + url.QueryEscape(query),
 	})
 
-	if statusCode == nil {
-		return nil, errors.New("unable to fetch data")
+	if error != nil {
+		return nil, error
 	}
 
-	if *statusCode > 299 {
+	if result.statusCode > 299 {
 		var response []ErrorResponse
 
-		if err := json.Unmarshal(result, &response); err != nil {
+		if err := json.Unmarshal(result.body, &response); err != nil {
 			log.Println("Failed to unmarshal result")
 			return nil, err
 		}
@@ -194,7 +196,7 @@ func Query(client *SalesforceClient, query string) ([]Record, error) {
 
 	var response QueryResponse
 
-	if err := json.Unmarshal(result, &response); err != nil {
+	if err := json.Unmarshal(result.body, &response); err != nil {
 		log.Println("Failed to unmarshal result")
 		return nil, err
 	}

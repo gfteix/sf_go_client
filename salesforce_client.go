@@ -25,10 +25,15 @@ type SalesforceClient struct {
 	token        *string
 }
 
-type FetchProps struct {
+type FetchRequest struct {
 	body   map[string]interface{}
 	method string
 	path   string
+}
+
+type FetchResponse struct {
+	body       []byte
+	statusCode int
 }
 
 type TokenError struct {
@@ -66,15 +71,15 @@ func NewSalesforceClient() *SalesforceClient {
 	return c
 }
 
-func (c *SalesforceClient) fetch(props FetchProps) ([]byte, *int) {
+func (c *SalesforceClient) fetch(request FetchRequest) (FetchResponse, error) {
 	var bufferBody io.Reader
 
-	if props.body != nil {
-		encodedBody, err := json.Marshal(props.body)
+	if request.body != nil {
+		encodedBody, err := json.Marshal(request.body)
 
 		if err != nil {
 			log.Printf("Error converting body to JSON: %v", err)
-			return nil, nil
+			return FetchResponse{}, err
 		}
 
 		bufferBody = bytes.NewBuffer(encodedBody)
@@ -82,19 +87,19 @@ func (c *SalesforceClient) fetch(props FetchProps) ([]byte, *int) {
 
 	client := &http.Client{}
 
-	reqUrl := c.apiUrl + props.path
-	req, err := http.NewRequest(props.method, reqUrl, bufferBody)
+	reqUrl := c.apiUrl + request.path
+	req, err := http.NewRequest(request.method, reqUrl, bufferBody)
 
 	if err != nil {
 		log.Printf("error on http.NewRequest: %v", err)
-		return nil, nil
+		return FetchResponse{}, err
 	}
 
 	token, err := c.getToken()
 
 	if err != nil {
 		log.Printf("error getting token %v", err)
-		return nil, nil
+		return FetchResponse{}, err
 	}
 
 	req.Header.Add("Content-Type", "application/json")
@@ -104,7 +109,7 @@ func (c *SalesforceClient) fetch(props FetchProps) ([]byte, *int) {
 
 	if err != nil {
 		log.Printf("error on client.Do: %v", err)
-		return nil, nil
+		return FetchResponse{}, err
 	}
 
 	defer resp.Body.Close()
@@ -113,12 +118,10 @@ func (c *SalesforceClient) fetch(props FetchProps) ([]byte, *int) {
 
 	if err != nil {
 		log.Printf("error on io.ReadAll: %v", err)
-		return nil, &resp.StatusCode
+		return FetchResponse{}, err
 	}
 
-	fmt.Printf("status code: %v\n", resp.StatusCode)
-
-	return respBody, &resp.StatusCode
+	return FetchResponse{body: respBody, statusCode: resp.StatusCode}, nil
 }
 
 func (c *SalesforceClient) getToken() (string, error) {

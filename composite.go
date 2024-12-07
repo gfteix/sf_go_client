@@ -13,11 +13,6 @@ type SubRequest struct {
 	HTTPHeaders map[string]string
 }
 
-type CompositeRequest struct {
-	AllOrNone        bool
-	CompositeRequest []SubRequest
-}
-
 type CompositeError struct {
 	StatusCode string   `json:"statusCode"`
 	Message    string   `json:"message"`
@@ -48,7 +43,7 @@ type CompositeResponse struct {
 	CompositeResponse []SubResponse `json:"compositeResponse"`
 }
 
-type CompositeProps struct {
+type CompositeInput struct {
 	client    SalesforceClient
 	allOrNone bool
 	requests  []SubRequest
@@ -71,26 +66,26 @@ type CollectionsResponse []struct {
 	Errors  []ErrorResponse `json:"errors"`
 }
 
-func Composite(props CompositeProps) (CompositeResponse, error) {
+func Composite(i CompositeInput) (CompositeResponse, error) {
 	body := make(map[string]interface{})
 
-	body["allOrNone"] = props.allOrNone
-	body["compositeRequests"] = props.requests
+	body["allOrNone"] = i.allOrNone
+	body["compositeRequests"] = i.requests
 
-	result, statusCode := props.client.fetch(FetchProps{
+	result, err := i.client.fetch(FetchRequest{
 		method: "POST",
 		path:   "/composite",
 		body:   body,
 	})
 
-	if statusCode == nil {
-		return CompositeResponse{}, errors.New("unable to fetch data")
+	if err != nil {
+		return CompositeResponse{}, err
 	}
 
-	if *statusCode > 299 {
+	if result.statusCode > 299 {
 		var response []ErrorResponse
 
-		if err := json.Unmarshal(result, &response); err != nil {
+		if err := json.Unmarshal(result.body, &response); err != nil {
 			return CompositeResponse{}, err
 		}
 
@@ -99,7 +94,7 @@ func Composite(props CompositeProps) (CompositeResponse, error) {
 
 	var response CompositeResponse
 
-	if err := json.Unmarshal(result, &response); err != nil {
+	if err := json.Unmarshal(result.body, &response); err != nil {
 		return CompositeResponse{}, err
 	}
 
@@ -128,20 +123,20 @@ func Collections(props CollectonsProps) (CollectionsResponse, error) {
 			}
 		}*/
 
-	result, statusCode := props.client.fetch(FetchProps{
+	result, err := props.client.fetch(FetchRequest{
 		method: "POST",
 		path:   "/composite/sobjects",
 		body:   body,
 	})
 
-	if statusCode == nil {
-		return CollectionsResponse{}, errors.New("unable to fetch data")
+	if err != nil {
+		return CollectionsResponse{}, err
 	}
 
-	if *statusCode > 299 {
+	if result.statusCode > 299 {
 		var response []ErrorResponse
 
-		if err := json.Unmarshal(result, &response); err != nil {
+		if err := json.Unmarshal(result.body, &response); err != nil {
 			return CollectionsResponse{}, err
 		}
 
@@ -150,7 +145,7 @@ func Collections(props CollectonsProps) (CollectionsResponse, error) {
 
 	var response CollectionsResponse
 
-	if err := json.Unmarshal(result, &response); err != nil {
+	if err := json.Unmarshal(result.body, &response); err != nil {
 		return CollectionsResponse{}, err
 	}
 
